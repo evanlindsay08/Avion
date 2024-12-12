@@ -1,7 +1,6 @@
 from aiohttp import web
 import os
 from dotenv import load_dotenv
-from aiohttp_cors import setup as cors_setup, ResourceOptions
 import json
 import aiohttp
 
@@ -9,55 +8,30 @@ load_dotenv()
 
 routes = web.RouteTableDef()
 
-# Configure CORS
-async def init_app():
-    app = web.Application()
-    
-    # Setup CORS
-    cors = cors_setup(app, defaults={
-        "*": ResourceOptions(
-            allow_credentials=True,
-            expose_headers="*",
-            allow_headers="*",
-            allow_methods=["GET", "POST", "OPTIONS"]
-        )
+@routes.options('/api/generate')
+async def options_handler(request):
+    return web.Response(headers={
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
     })
-    
-    app.add_routes(routes)
-    
-    # Configure CORS for all routes
-    for route in list(app.router.routes()):
-        cors.add(route)
-    
-    return app
 
-# Serve static files
-@routes.get('/')
-async def serve_index(request):
-    return web.FileResponse('index.html')
-
-@routes.get('/home')
-async def serve_home(request):
-    return web.FileResponse('home.html')
-
-@routes.get('/generator')
-async def serve_generator(request):
-    return web.FileResponse('generator.html')
-
-@routes.get('/whitepaper')
-async def serve_whitepaper(request):
-    return web.FileResponse('whitepaper.html')
-
-# API endpoint for image generation
 @routes.post('/api/generate')
 async def generate(request):
     try:
+        # Add CORS headers to response
+        headers = {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type',
+        }
+        
         data = await request.json()
         
         # Get Leonardo API key
         api_key = os.getenv('LEONARDO_API_KEY')
         if not api_key:
-            raise ValueError("Leonardo API key not found")
+            return web.json_response({"error": "API key not found"}, status=500, headers=headers)
 
         # Make request to Leonardo API
         async with aiohttp.ClientSession() as session:
@@ -77,20 +51,52 @@ async def generate(request):
                 }
             ) as response:
                 if response.status != 200:
-                    raise ValueError(f"Leonardo API error: {await response.text()}")
+                    return web.json_response(
+                        {"error": f"Leonardo API error: {await response.text()}"}, 
+                        status=500,
+                        headers=headers
+                    )
                 
                 result = await response.json()
-                
-                # Return the result
                 return web.json_response({
                     'imageUrl': result['generations'][0]['url'] if result.get('generations') else None,
                     'success': True
-                })
+                }, headers=headers)
 
     except json.JSONDecodeError:
-        return web.json_response({"error": "Invalid JSON"}, status=400)
+        return web.json_response(
+            {"error": "Invalid JSON"}, 
+            status=400,
+            headers=headers
+        )
     except Exception as e:
-        return web.json_response({"error": str(e)}, status=500)
+        return web.json_response(
+            {"error": str(e)}, 
+            status=500,
+            headers=headers
+        )
+
+# Serve static files
+@routes.get('/')
+async def serve_index(request):
+    return web.FileResponse('index.html')
+
+@routes.get('/home')
+async def serve_home(request):
+    return web.FileResponse('home.html')
+
+@routes.get('/generator')
+async def serve_generator(request):
+    return web.FileResponse('generator.html')
+
+@routes.get('/whitepaper')
+async def serve_whitepaper(request):
+    return web.FileResponse('whitepaper.html')
+
+async def init_app():
+    app = web.Application()
+    app.add_routes(routes)
+    return app
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8000))
