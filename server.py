@@ -32,12 +32,20 @@ ART_STYLE_PROMPTS = {
 }
 
 @routes.get('/')
-async def serve_html(request):
-    try:
-        with open('index.html', 'r') as f:
-            return web.Response(text=f.read(), content_type='text/html')
-    except Exception as e:
-        return web.Response(text=str(e), status=500)
+async def serve_index(request):
+    return web.FileResponse('index.html')
+
+@routes.get('/home')
+async def serve_home(request):
+    return web.FileResponse('home.html')
+
+@routes.get('/generator')
+async def serve_generator(request):
+    return web.FileResponse('generator.html')
+
+@routes.get('/whitepaper')
+async def serve_whitepaper(request):
+    return web.FileResponse('whitepaper.html')
 
 @routes.get('/ping')
 async def ping(request):
