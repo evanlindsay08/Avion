@@ -900,17 +900,20 @@
 
             const request = async () => {
                 try {
-                    const response = await fetch('http://localhost:8000/api/generate', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ 
-                            idea: generatedContent.name,
-                            generatedName: generatedContent.name,
-                            artStyle: selectedStyle
-                        })
-                    });
+                    const response = await fetch(
+                        '/api/generate',
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ 
+                                idea: generatedContent.name,
+                                generatedName: generatedContent.name,
+                                artStyle: selectedStyle
+                            })
+                        }
+                    );
 
                     if (!response.ok) {
                         const errorData = await response.json();
