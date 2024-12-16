@@ -86,17 +86,17 @@ async def generate(request):
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type'
     }
+
+    if request.method == 'OPTIONS':
+        return web.Response(headers=headers)
     
     try:
         data = await request.json()
-        print("Received data:", data)  # Debug log
         idea = data.get('idea')
         art_style = data.get('artStyle', '3d')
         
-        print(f"Processing request - idea: {idea}, style: {art_style}")  # Debug log
-
-        if not idea:
-            return web.json_response({"error": "No idea provided"}, status=400)
+        if not LEONARDO_API_KEY:
+            return web.json_response({"error": "API key not configured"}, status=500, headers=headers)
 
         # Get the art style prompt
         style_prompt = ART_STYLE_PROMPTS.get(art_style, ART_STYLE_PROMPTS['3d'])
