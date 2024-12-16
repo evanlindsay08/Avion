@@ -24,29 +24,28 @@ ART_STYLE_PROMPTS = {
         professional illustration, photorealistic elements, detailed shading"""
 }
 
-# Remove the preflight handler completely
-# Remove this section:
-# @routes.options('/{tail:.*}')
-# async def preflight_handler(request):
-#     return web.Response(headers={...})
-
+# CORS middleware
 @web.middleware
 async def cors_middleware(request, handler):
-    if request.method == 'OPTIONS':
-        return web.Response(headers={
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-            'Access-Control-Allow-Headers': '*',
-            'Access-Control-Max-Age': '3600',
-        })
-    
     response = await handler(request)
     response.headers.update({
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': '*'
+        'Access-Control-Allow-Origin': 'https://avionai.net',
+        'Access-Control-Allow-Methods': '*',
+        'Access-Control-Allow-Headers': '*',
+        'Access-Control-Allow-Credentials': 'true'
     })
     return response
+
+# Handle OPTIONS requests globally
+@routes.options('/{tail:.*}')
+async def options_handler(request):
+    return web.Response(headers={
+        'Access-Control-Allow-Origin': 'https://avionai.net',
+        'Access-Control-Allow-Methods': '*',
+        'Access-Control-Allow-Headers': '*',
+        'Access-Control-Allow-Credentials': 'true',
+        'Access-Control-Max-Age': '86400',
+    })
 
 # Static file handlers
 @routes.get('/')
