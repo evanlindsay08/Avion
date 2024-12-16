@@ -34,15 +34,24 @@ async def preflight_handler(request):
         'Access-Control-Max-Age': '86400',
     })
 
-# Add CORS middleware
+# Remove the existing CORS middleware and replace with this
 @web.middleware
 async def cors_middleware(request, handler):
+    if request.method == 'OPTIONS':
+        return web.Response(
+            headers={
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': '*',
+                'Access-Control-Allow-Headers': '*',
+                'Access-Control-Max-Age': '3600',
+            }
+        )
+    
     response = await handler(request)
     response.headers.update({
-        'Access-Control-Allow-Origin': 'https://avionai.net',
-        'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Max-Age': '86400',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': '*',
+        'Access-Control-Allow-Headers': '*',
     })
     return response
 
@@ -153,24 +162,8 @@ async def generate(request):
         return web.json_response({"error": str(e)}, status=500)
 
 async def init_app():
-    app = web.Application()
+    app = web.Application(middlewares=[cors_middleware])
     app.add_routes(routes)
-    
-    # Add CORS middleware
-    async def cors_middleware(app, handler):
-        async def middleware_handler(request):
-            if request.method == 'OPTIONS':
-                response = web.Response()
-            else:
-                response = await handler(request)
-                
-            response.headers['Access-Control-Allow-Origin'] = '*'
-            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
-            response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
-            return response
-        return middleware_handler
-    
-    app.middlewares.append(cors_middleware)
     return app
 
 if __name__ == '__main__':
