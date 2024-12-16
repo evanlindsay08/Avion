@@ -3,10 +3,66 @@ import os
 from dotenv import load_dotenv
 import json
 import aiohttp
+from PIL import Image
+from io import BytesIO
+import requests
 
 load_dotenv()
 
 routes = web.RouteTableDef()
+
+# Add Discord webhook configuration
+DISCORD_WEBHOOK_URL = os.getenv('DISCORD_WEBHOOK_URL')
+
+async def get_discord_message(message_id, channel_id):
+    """Get message data from Discord"""
+    discord_token = os.getenv('DISCORD_BOT_TOKEN')
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.get(
+            f'https://discord.com/api/v10/channels/{channel_id}/messages/{message_id}',
+            headers={'Authorization': f'Bot {discord_token}'}
+        ) as response:
+            if response.status != 200:
+                raise ValueError("Failed to fetch Discord message")
+            
+            data = await response.json()
+            
+            # Get the first image attachment if any
+            image_url = None
+            if data.get('attachments'):
+                image_url = data['attachments'][0]['url']
+            elif data.get('embeds'):
+                # Check embeds for Twitter preview
+                for embed in data['embeds']:
+                    if embed.get('image'):
+                        image_url = embed['image']['url']
+                        break
+            
+            return {
+                'text': data['content'],
+                'image_url': image_url
+            }
+
+async def process_discord_image(image_url):
+    """Process image to 1:1 ratio"""
+    response = requests.get(image_url)
+    img = Image.open(BytesIO(response.content))
+    
+    # Resize to 1:1 ratio
+    size = min(img.size)
+    left = (img.width - size) // 2
+    top = (img.height - size) // 2
+    
+    img = img.crop((left, top, left + size, top + size))
+    img = img.resize((512, 512))
+    
+    # Save temporarily
+    output = BytesIO()
+    img.save(output, format='PNG')
+    output.seek(0)
+    
+    return output
 
 @routes.options('/api/generate')
 async def options_handler(request):
@@ -19,7 +75,6 @@ async def options_handler(request):
 @routes.post('/api/generate')
 async def generate(request):
     try:
-        # Add CORS headers to response
         headers = {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
