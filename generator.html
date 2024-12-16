@@ -896,9 +896,8 @@
 
             const request = async () => {
                 try {
-                    const response = await fetch('https://avion-production.up.railway.app/api/generate', {
+                    const response = await fetch('/api/generate', {
                         method: 'POST',
-                        mode: 'cors',
                         headers: {
                             'Content-Type': 'application/json'
                         },
@@ -909,13 +908,8 @@
                     });
 
                     if (!response.ok) {
-                        const contentType = response.headers.get('content-type');
-                        if (contentType && contentType.includes('application/json')) {
-                            const errorData = await response.json();
-                            throw new Error(errorData.error || 'Failed to generate');
-                        } else {
-                            throw new Error(`HTTP error! status: ${response.status}`);
-                        }
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Failed to generate');
                     }
 
                     const data = await response.json();
