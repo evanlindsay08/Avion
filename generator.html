@@ -538,7 +538,7 @@
         
         <div class="input-section">
             <div class="input-wrapper">
-                <input type="text" id="tweetUrl" placeholder="Enter Twitter/X post URL or concept" />
+                <input type="text" id="coinIdea" placeholder="Enter concept or click 'Generate Idea'" />
                 <button class="suggest-button" onclick="suggestIdea()">Generate Idea</button>
             </div>
             <div class="style-suggestion">
@@ -883,27 +883,20 @@
         }
 
         async function generateMemecoin() {
-            const input = document.getElementById('tweetUrl').value;
+            const input = document.getElementById('coinIdea').value;
             const selectedStyle = document.getElementById('artStyle').value;
             
             if (!input) {
-                alert('Please enter a Twitter URL or concept!');
+                alert('Please enter a memecoin idea!');
                 return;
             }
 
             document.getElementById('loading').style.display = 'block';
             document.getElementById('result').style.display = 'none';
 
-            // Check if input is a Twitter URL
-            const isTweetUrl = input.includes('twitter.com') || input.includes('x.com');
-            
             const request = async () => {
                 try {
-                    const apiUrl = window.location.hostname === 'localhost' 
-                        ? 'http://localhost:8000/api/generate'
-                        : 'https://avionai-production.up.railway.app/api/generate';
-
-                    const response = await fetch(apiUrl, {
+                    const response = await fetch('/api/generate', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
