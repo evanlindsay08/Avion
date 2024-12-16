@@ -11,8 +11,8 @@ healthcheckTimeout = 100
 internal_port = 8000
 
 [[headers]]
-for = "/*"
+for = "/api/*"
 [headers.values]
 Access-Control-Allow-Origin = "*"
-Access-Control-Allow-Methods = "GET, POST, OPTIONS"
-Access-Control-Allow-Headers = "*"
+Access-Control-Allow-Methods = "POST, OPTIONS"
+Access-Control-Allow-Headers = "Content-Type"
