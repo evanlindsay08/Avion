@@ -538,7 +538,7 @@
         
         <div class="input-section">
             <div class="input-wrapper">
-                <input type="text" id="coinIdea" placeholder="Enter concept or click 'Generate Idea'" />
+                <input type="text" id="tweetUrl" placeholder="Enter Twitter/X post URL or concept" />
                 <button class="suggest-button" onclick="suggestIdea()">Generate Idea</button>
             </div>
             <div class="style-suggestion">
@@ -883,33 +883,31 @@
         }
 
         async function generateMemecoin() {
-            const inputIdea = document.getElementById('coinIdea').value;
+            const input = document.getElementById('tweetUrl').value;
             const selectedStyle = document.getElementById('artStyle').value;
             
-            if (!inputIdea) {
-                alert('Please enter a memecoin idea!');
+            if (!input) {
+                alert('Please enter a Twitter URL or concept!');
                 return;
             }
 
             document.getElementById('loading').style.display = 'block';
             document.getElementById('result').style.display = 'none';
 
-            // Generate content with cleaned name
-            const generatedContent = generateContent(inputIdea);
-            lastGeneratedContent = generatedContent;
-
+            // Check if input is a Twitter URL
+            const isTweetUrl = input.includes('twitter.com') || input.includes('x.com');
+            
             const request = async () => {
                 try {
                     const response = await fetch(
-                        '/api/generate',
+                        'https://avionai.net/api/generate',
                         {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json'
                             },
                             body: JSON.stringify({ 
-                                idea: generatedContent.name,
-                                generatedName: generatedContent.name,
+                                idea: input,
                                 artStyle: selectedStyle
                             })
                         }
@@ -925,12 +923,12 @@
                     document.getElementById('result').style.display = 'block';
 
                     document.getElementById('generatedImage').src = data.imageUrl;
-                    document.getElementById('coinName').textContent = generatedContent.name;
-                    document.getElementById('ticker').textContent = generatedContent.ticker;
-                    document.getElementById('description').textContent = generatedContent.description;
+                    document.getElementById('coinName').textContent = data.name;
+                    document.getElementById('ticker').textContent = data.ticker;
+                    document.getElementById('description').textContent = data.description;
 
                     const socialLinksContainer = document.getElementById('socialLinks');
-                    socialLinksContainer.innerHTML = generateSocialLinks(generatedContent.socialLinks);
+                    socialLinksContainer.innerHTML = generateSocialLinks(data.socialLinks);
                 } catch (error) {
                     console.error('Error:', error);
                     document.getElementById('loading').style.display = 'none';
