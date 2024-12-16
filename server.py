@@ -24,6 +24,28 @@ ART_STYLE_PROMPTS = {
         professional illustration, photorealistic elements, detailed shading"""
 }
 
+# Add preflight handler for all routes
+@routes.options('/{tail:.*}')
+async def preflight_handler(request):
+    return web.Response(headers={
+        'Access-Control-Allow-Origin': 'https://avionai.net',
+        'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Max-Age': '86400',
+    })
+
+# Add CORS middleware
+@web.middleware
+async def cors_middleware(request, handler):
+    response = await handler(request)
+    response.headers.update({
+        'Access-Control-Allow-Origin': 'https://avionai.net',
+        'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Max-Age': '86400',
+    })
+    return response
+
 # Static file handlers
 @routes.get('/')
 async def serve_index(request):
