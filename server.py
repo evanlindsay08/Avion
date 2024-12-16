@@ -24,25 +24,6 @@ ART_STYLE_PROMPTS = {
         professional illustration, photorealistic elements, detailed shading"""
 }
 
-# Single CORS middleware
-@web.middleware
-async def cors_middleware(request, handler):
-    if request.method == 'OPTIONS':
-        return web.Response(headers={
-            'Access-Control-Allow-Origin': 'https://avionai.net',
-            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type',
-            'Access-Control-Max-Age': '86400',
-        })
-
-    response = await handler(request)
-    response.headers.update({
-        'Access-Control-Allow-Origin': 'https://avionai.net',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type'
-    })
-    return response
-
 # Static file handlers
 @routes.get('/')
 async def serve_index(request):
@@ -76,15 +57,17 @@ async def api_options(request):
 
 @routes.post('/api/generate')
 async def generate(request):
+    # Add CORS headers to all responses
     headers = {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type'
+        'Access-Control-Allow-Methods': '*',
+        'Access-Control-Allow-Headers': '*'
     }
 
+    # Handle preflight
     if request.method == 'OPTIONS':
         return web.Response(headers=headers)
-    
+
     try:
         data = await request.json()
         idea = data.get('idea')
@@ -165,7 +148,7 @@ async def generate(request):
         return web.json_response({"error": str(e)}, status=500, headers=headers)
 
 async def init_app():
-    app = web.Application(middlewares=[cors_middleware])
+    app = web.Application()
     app.add_routes(routes)
     return app
 
