@@ -41,8 +41,8 @@ async def cors_middleware(request, handler):
         return web.Response(
             headers={
                 'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': '*',
-                'Access-Control-Allow-Headers': '*',
+                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type, Accept',
                 'Access-Control-Max-Age': '3600',
             }
         )
@@ -50,8 +50,8 @@ async def cors_middleware(request, handler):
     response = await handler(request)
     response.headers.update({
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': '*',
-        'Access-Control-Allow-Headers': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Accept'
     })
     return response
 
