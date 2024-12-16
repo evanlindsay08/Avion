@@ -1,158 +1,158 @@
-from aiohttp import web
+from aiohttp import web, ClientSession
+import json
 import os
 from dotenv import load_dotenv
-import json
-import aiohttp
-from PIL import Image
-from io import BytesIO
-import requests
+import pathlib
 
 load_dotenv()
 
 routes = web.RouteTableDef()
+BASE_DIR = pathlib.Path(__file__).parent
+LEONARDO_API_KEY = os.getenv('LEONARDO_API_KEY')
+LEONARDO_BASE_URL = "https://cloud.leonardo.ai/api/rest/v1"
 
-# Add Discord webhook configuration
-DISCORD_WEBHOOK_URL = os.getenv('DISCORD_WEBHOOK_URL')
+ART_STYLE_PROMPTS = {
+    '3d': """3D rendered style, volumetric lighting, subsurface scattering,
+        realistic textures, ambient occlusion, ray-traced reflections""",
+    'anime': """anime art style, manga-inspired, cel-shaded, vibrant colors,
+        kawaii aesthetic, clean linework, anime character design""",
+    'minimalist': """minimalist design, clean lines, simple shapes,
+        limited color palette, negative space, geometric composition""",
+    'cartoon': """cartoon style, bold outlines, vibrant colors,
+        exaggerated features, playful design, smooth shading""",
+    'realistic': """realistic digital painting, detailed textures,
+        professional illustration, photorealistic elements, detailed shading"""
+}
 
-async def get_discord_message(message_id, channel_id):
-    """Get message data from Discord"""
-    discord_token = os.getenv('DISCORD_BOT_TOKEN')
-    
-    async with aiohttp.ClientSession() as session:
-        async with session.get(
-            f'https://discord.com/api/v10/channels/{channel_id}/messages/{message_id}',
-            headers={'Authorization': f'Bot {discord_token}'}
-        ) as response:
-            if response.status != 200:
-                raise ValueError("Failed to fetch Discord message")
-            
-            data = await response.json()
-            
-            # Get the first image attachment if any
-            image_url = None
-            if data.get('attachments'):
-                image_url = data['attachments'][0]['url']
-            elif data.get('embeds'):
-                # Check embeds for Twitter preview
-                for embed in data['embeds']:
-                    if embed.get('image'):
-                        image_url = embed['image']['url']
-                        break
-            
-            return {
-                'text': data['content'],
-                'image_url': image_url
-            }
+# Static file handlers
+@routes.get('/')
+async def serve_index(request):
+    return web.FileResponse(BASE_DIR / 'index.html')
 
-async def process_discord_image(image_url):
-    """Process image to 1:1 ratio"""
-    response = requests.get(image_url)
-    img = Image.open(BytesIO(response.content))
-    
-    # Resize to 1:1 ratio
-    size = min(img.size)
-    left = (img.width - size) // 2
-    top = (img.height - size) // 2
-    
-    img = img.crop((left, top, left + size, top + size))
-    img = img.resize((512, 512))
-    
-    # Save temporarily
-    output = BytesIO()
-    img.save(output, format='PNG')
-    output.seek(0)
-    
-    return output
+@routes.get('/home')
+async def serve_home(request):
+    return web.FileResponse(BASE_DIR / 'home.html')
 
-@routes.options('/api/generate')
-async def options_handler(request):
-    return web.Response(headers={
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-    })
+@routes.get('/generator')
+async def serve_generator(request):
+    return web.FileResponse(BASE_DIR / 'generator.html')
+
+@routes.get('/whitepaper')
+async def serve_whitepaper(request):
+    return web.FileResponse(BASE_DIR / 'whitepaper.html')
+
+@routes.get('/assets/{filename:.*}')
+async def serve_assets(request):
+    filename = request.match_info['filename']
+    return web.FileResponse(BASE_DIR / 'assets' / filename)
 
 @routes.post('/api/generate')
 async def generate(request):
     try:
-        headers = {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type',
-        }
-        
         data = await request.json()
+        print("Received data:", data)  # Debug log
+        idea = data.get('idea')
+        art_style = data.get('artStyle', '3d')
         
-        # Get Leonardo API key
-        api_key = os.getenv('LEONARDO_API_KEY')
-        if not api_key:
-            return web.json_response({"error": "API key not found"}, status=500, headers=headers)
+        print(f"Processing request - idea: {idea}, style: {art_style}")  # Debug log
 
-        # Make request to Leonardo API
-        async with aiohttp.ClientSession() as session:
+        if not idea:
+            return web.json_response({"error": "No idea provided"}, status=400)
+
+        # Get the art style prompt
+        style_prompt = ART_STYLE_PROMPTS.get(art_style, ART_STYLE_PROMPTS['3d'])
+
+        # Create base prompt
+        base_prompt = f"""detailed cryptocurrency mascot logo of a {idea},
+            {style_prompt},
+            centered composition, clean vectorized style,
+            suitable for crypto token, professional logo design"""
+
+        headers = {
+            'accept': 'application/json',
+            'authorization': f'Bearer {LEONARDO_API_KEY}',
+            'content-type': 'application/json'
+        }
+
+        payload = {
+            "height": 512,
+            "width": 512,
+            "prompt": base_prompt,
+            "modelId": "6bef9f1b-29cb-40c7-b9df-32b51c1f67d3",
+            "negative_prompt": "text, watermark, logo, words, letters, signature, realistic, photographic, abstract shapes, blurry, low quality",
+            "num_images": 1,
+            "guidance_scale": 8,
+            "init_strength": 0.4
+        }
+
+        async with ClientSession() as session:
             async with session.post(
-                'https://cloud.leonardo.ai/api/rest/v1/generations',
-                headers={
-                    'Authorization': f'Bearer {api_key}',
-                    'Content-Type': 'application/json'
-                },
-                json={
-                    "prompt": data['idea'],
-                    "modelId": "ac614f96-1082-45bf-be9d-757f2d31c174",
-                    "width": 512,
-                    "height": 512,
-                    "num_images": 1,
-                    "negative_prompt": "nsfw, bad quality, text, watermark",
-                }
+                f"{LEONARDO_BASE_URL}/generations",
+                headers=headers,
+                json=payload
             ) as response:
+                response_text = await response.text()
+                print(f"Response status: {response.status}")
+                print(f"Response text: {response_text}")
+                
                 if response.status != 200:
                     return web.json_response(
-                        {"error": f"Leonardo API error: {await response.text()}"}, 
-                        status=500,
-                        headers=headers
+                        {"error": f"Failed to generate image: {response_text}"}, 
+                        status=response.status
                     )
                 
-                result = await response.json()
-                return web.json_response({
-                    'imageUrl': result['generations'][0]['url'] if result.get('generations') else None,
-                    'success': True
-                }, headers=headers)
+                generation_data = json.loads(response_text)
+                generation_id = generation_data['sdGenerationJob']['generationId']
+                
+                # Poll for results
+                for _ in range(30):
+                    async with session.get(
+                        f"{LEONARDO_BASE_URL}/generations/{generation_id}",
+                        headers=headers
+                    ) as check_response:
+                        if check_response.status == 200:
+                            result = await check_response.json()
+                            if result['generations_by_pk']['status'] == 'COMPLETE':
+                                image_url = result['generations_by_pk']['generated_images'][0]['url']
+                                return web.json_response({
+                                    'imageUrl': image_url,
+                                    'name': idea.title(),
+                                    'ticker': ''.join(word[0].upper() for word in idea.split()[:3]),
+                                    'description': f"Revolutionary {idea} token powered by advanced AI technology.",
+                                    'socialLinks': ['Twitter Account', 'Telegram Group', 'Website'],
+                                    'success': True
+                                })
+                    await web.asyncio.sleep(1)
 
-    except json.JSONDecodeError:
-        return web.json_response(
-            {"error": "Invalid JSON"}, 
-            status=400,
-            headers=headers
-        )
+                return web.json_response({"error": "Timeout waiting for image"}, status=500)
+
     except Exception as e:
-        return web.json_response(
-            {"error": str(e)}, 
-            status=500,
-            headers=headers
-        )
-
-# Serve static files
-@routes.get('/')
-async def serve_index(request):
-    return web.FileResponse('index.html')
-
-@routes.get('/home')
-async def serve_home(request):
-    return web.FileResponse('home.html')
-
-@routes.get('/generator')
-async def serve_generator(request):
-    return web.FileResponse('generator.html')
-
-@routes.get('/whitepaper')
-async def serve_whitepaper(request):
-    return web.FileResponse('whitepaper.html')
+        print(f"Detailed error: {str(e)}")  # Debug log
+        return web.json_response({"error": str(e)}, status=500)
 
 async def init_app():
     app = web.Application()
     app.add_routes(routes)
+    
+    # Add CORS middleware
+    async def cors_middleware(app, handler):
+        async def middleware_handler(request):
+            if request.method == 'OPTIONS':
+                response = web.Response()
+            else:
+                response = await handler(request)
+                
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+            return response
+        return middleware_handler
+    
+    app.middlewares.append(cors_middleware)
     return app
 
 if __name__ == '__main__':
+    print("Starting server...")
+    print(f"Leonardo API Key present: {'Yes' if LEONARDO_API_KEY else 'No'}")
     port = int(os.environ.get('PORT', 8000))
     web.run_app(init_app(), port=port, host='0.0.0.0') 
