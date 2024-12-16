@@ -170,7 +170,7 @@ async def init_app():
     return app
 
 if __name__ == '__main__':
-    print("Starting server...")
-    print(f"Leonardo API Key present: {'Yes' if LEONARDO_API_KEY else 'No'}")
     port = int(os.environ.get('PORT', 8000))
+    print(f"Starting server on port {port}...")
+    print(f"Leonardo API Key present: {'Yes' if LEONARDO_API_KEY else 'No'}")
     web.run_app(init_app(), port=port, host='0.0.0.0') 
