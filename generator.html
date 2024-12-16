@@ -898,10 +898,8 @@
                 try {
                     const response = await fetch('https://avion-production.up.railway.app/api/generate', {
                         method: 'POST',
-                        credentials: 'include',
                         headers: {
-                            'Content-Type': 'application/json',
-                            'Origin': 'https://avionai.net'
+                            'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({ 
                             idea: input,
