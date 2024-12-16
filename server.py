@@ -24,34 +24,27 @@ ART_STYLE_PROMPTS = {
         professional illustration, photorealistic elements, detailed shading"""
 }
 
-# Add preflight handler for all routes
-@routes.options('/{tail:.*}')
-async def preflight_handler(request):
-    return web.Response(headers={
-        'Access-Control-Allow-Origin': 'https://avionai.net',
-        'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Max-Age': '86400',
-    })
+# Remove the preflight handler completely
+# Remove this section:
+# @routes.options('/{tail:.*}')
+# async def preflight_handler(request):
+#     return web.Response(headers={...})
 
-# Remove the existing CORS middleware and replace with this
 @web.middleware
 async def cors_middleware(request, handler):
     if request.method == 'OPTIONS':
-        return web.Response(
-            headers={
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type, Accept',
-                'Access-Control-Max-Age': '3600',
-            }
-        )
+        return web.Response(headers={
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': '*',
+            'Access-Control-Max-Age': '3600',
+        })
     
     response = await handler(request)
     response.headers.update({
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Accept'
+        'Access-Control-Allow-Headers': '*'
     })
     return response
 
@@ -77,8 +70,23 @@ async def serve_assets(request):
     filename = request.match_info['filename']
     return web.FileResponse(BASE_DIR / 'assets' / filename)
 
+@routes.options('/api/generate')
+async def api_options(request):
+    return web.Response(headers={
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Max-Age': '3600',
+    })
+
 @routes.post('/api/generate')
 async def generate(request):
+    headers = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
+    }
+    
     try:
         data = await request.json()
         print("Received data:", data)  # Debug log
@@ -152,14 +160,14 @@ async def generate(request):
                                     'description': f"Revolutionary {idea} token powered by advanced AI technology.",
                                     'socialLinks': ['Twitter Account', 'Telegram Group', 'Website'],
                                     'success': True
-                                })
+                                }, headers=headers)
                     await web.asyncio.sleep(1)
 
                 return web.json_response({"error": "Timeout waiting for image"}, status=500)
 
     except Exception as e:
         print(f"Detailed error: {str(e)}")  # Debug log
-        return web.json_response({"error": str(e)}, status=500)
+        return web.json_response({"error": str(e)}, status=500, headers=headers)
 
 async def init_app():
     app = web.Application(middlewares=[cors_middleware])
